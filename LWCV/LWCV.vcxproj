@@ -80,6 +80,7 @@
   <ItemGroup>
     <ClInclude Include="LWCV.h" />
     <ClInclude Include="LWCVConversion.h" />
+    <ClInclude Include="LwcvMath.h" />
     <ClInclude Include="LWCVVersion.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -95,6 +96,7 @@
     </ClCompile>
     <ClCompile Include="LWCV.cpp" />
     <ClCompile Include="LWCVConversion.cpp" />
+    <ClCompile Include="LwcvMath.cpp" />
     <ClCompile Include="LWCVVersion.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
