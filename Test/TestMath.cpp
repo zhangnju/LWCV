@@ -210,11 +210,24 @@ int check_explog_precision(float xmin, float xmax) {
 
 void check_sincos_performance()
 {
-	int niter = 1000000;                                                
+	int niter = 1000000;     
+	double t0, t1;
+
+	float xf = 0.75, bmin_f = 0.5, bmax_f = 1.0;
+	t0 = (double)clock() / (double)CLOCKS_PER_SEC;
+	for (int i = 0; i < niter*4; ++i) {
+		xf = sinf(xf); 
+		if (xf < bmin_f)
+			xf = bmin_f;
+		if (xf > bmax_f)
+			xf = bmax_f;
+	} 
+	t1 = (double)clock() / (double)CLOCKS_PER_SEC;
+	cout << "origin sin operation is " << t1 - t0 << "seconds" << endl;
+
 	V4SF bmin, bmax,x;
 	bmin.v = _mm_set_ps1(0.5), bmax.v = _mm_set_ps1(1.0);
 	x.v = _mm_set_ps1(0.75); 
-	double t0, t1;
 	t0= (double)clock() / (double)CLOCKS_PER_SEC;
 	for (int i = 0; i < niter; ++i) {
 			LwcvSinPS(x.f,4,x.f); x.v = _mm_min_ps(x.v, bmax.v); x.v = _mm_max_ps(x.v, bmin.v);      
@@ -232,7 +245,18 @@ void check_sincos_performance()
 	t1 = (double)clock() / (double)CLOCKS_PER_SEC;
 	cout << "AVX sin operation is " << t1 - t0 << "seconds" << endl;
 
-	
+	xf = 0.75;
+	t0 = (double)clock() / (double)CLOCKS_PER_SEC;
+	for (int i = 0; i < niter * 4; ++i) {
+		xf = cosf(xf);
+		if (xf < bmin_f)
+			xf = bmin_f;
+		if (xf > bmax_f)
+			xf = bmax_f;
+	}
+	t1 = (double)clock() / (double)CLOCKS_PER_SEC;
+	cout << "origin cos operation is " << t1 - t0 << "seconds" << endl;
+
 	x.v = _mm_set_ps1(0.75);
 	t0 = (double)clock() / (double)CLOCKS_PER_SEC;
 	for (int i = 0; i < niter; ++i) {
@@ -255,10 +279,24 @@ void check_sincos_performance()
 void check_explog_performance()
 {
 	int niter = 1000000;
+	double t0, t1;
+
+	float xf = 0.75, bmin_f = 0.5, bmax_f = 1.0;
+	t0 = (double)clock() / (double)CLOCKS_PER_SEC;
+	for (int i = 0; i < niter * 4; ++i) {
+		xf = expf(xf);
+		xf = logf(xf);
+		if (xf < bmin_f)
+			xf = bmin_f;
+		if (xf > bmax_f)
+			xf = bmax_f;
+	}
+	t1 = (double)clock() / (double)CLOCKS_PER_SEC;
+	cout << "origin exp/log operation is " << t1 - t0 << "seconds" << endl;
+
 	V4SF bmin, bmax, x;
 	bmin.v = _mm_set_ps1(0.5), bmax.v = _mm_set_ps1(1.0);
 	x.v = _mm_set_ps1(0.75);
-	double t0, t1;
 	t0 = (double)clock() / (double)CLOCKS_PER_SEC;
 	for (int i = 0; i < niter; ++i) {
 		LwcvExpPS(x.f, 4, x.f); LwcvLogPS(x.f, 4, x.f);
