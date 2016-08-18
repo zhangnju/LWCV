@@ -38,9 +38,11 @@ void FillRandom(uint8_t * data, size_t width, size_t height,uint8_t lo, uint8_t 
 		}
 	}
 }
+extern void TestMath();
 int main()
 {
 	//LwcvVersion();
+	TestMath();
 
 	size_t width = 1920;
 	size_t height = 1080;

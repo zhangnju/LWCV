@@ -32,6 +32,14 @@ LWCV_API void LwcvBgrToYuv422p(const uint8_t * bgr, size_t width, size_t height,
 
 LWCV_API void LwcvBgrToYuv444p(const uint8_t * bgr, size_t width, size_t height, size_t bgrStride, uint8_t * y, size_t yStride, uint8_t * u, size_t uStride, uint8_t * v, size_t vStride);
 
+LWCV_API void LwcvLogPS(float* data, uint8_t size, float* res);
 
+LWCV_API void LwcvExpPS(float* data, uint8_t size, float* res);
+
+LWCV_API void LwcvSinPS(float* data, uint8_t size, float* res);
+
+LWCV_API void LwcvCosPS(float* data, uint8_t size, float* res);
+
+LWCV_API void LwcvSinCosPS(float* data, uint8_t size, float* res_sin, float* res_cos);
 
 #endif
