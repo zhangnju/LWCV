@@ -462,4 +462,68 @@ namespace SSE{
 			bgr += 2 * bgrStride;
 		}
 	}
+
+	__forceinline void BgrToYuv422p(const uint8_t * bgr, uint8_t * y, uint8_t * u, uint8_t * v)
+	{
+		__m128i blue[2], green[2], red[2];
+
+		LoadBgr((__m128i*)bgr + 0, blue[0], green[0], red[0]);
+		_mm_store_si128((__m128i*)y + 0, BgrToY8(blue[0], green[0], red[0]));
+
+		LoadBgr((__m128i*)bgr + 3, blue[1], green[1], red[1]);
+		_mm_store_si128((__m128i*)y + 1, BgrToY8(blue[1], green[1], red[1]));
+
+		blue[0]=Average16(blue[0], blue[1]);
+		green[0] = Average16(green[0], green[1]);
+		red[0] = Average16(red[0], red[1]);
+
+		_mm_store_si128((__m128i*)u, BgrToU8(blue[0], green[0], red[0]));
+		_mm_store_si128((__m128i*)u, BgrToV8(blue[0], green[0], red[0]));
+	}
+
+
+	void BgrToYuv422p(const uint8_t * bgr, size_t width, size_t height, size_t bgrStride, uint8_t * y, size_t yStride,
+		uint8_t * u, size_t uStride, uint8_t * v, size_t vStride)
+	{
+		assert((width % 2 == 0) && (width >= 2 * sizeof(__m128i)));
+
+		size_t alignedWidth = width & ~(2 * sizeof(__m128i) - 1);
+		const size_t A6 = sizeof(__m128i) * 6;
+		for (size_t row = 0; row < height; ++row)
+		{
+			for (size_t colUV = 0, colY = 0, colBgr = 0; colY < alignedWidth; colY += 2 * sizeof(__m128i), colUV += sizeof(__m128i), colBgr += A6)
+				BgrToYuv422p(bgr + colBgr, y + colY, u + colUV, v + colUV);
+			y += yStride;
+			u += uStride;
+			v += vStride;
+			bgr += bgrStride;
+		}
+	}
+
+	__forceinline void BgrToYuv444p(const uint8_t * bgr, uint8_t * y, uint8_t * u, uint8_t * v)
+	{
+		__m128i blue, green, red;
+		LoadBgr((__m128i*)bgr, blue, green, red);
+		_mm_store_si128((__m128i*)y, BgrToY8(blue, green, red));
+		_mm_store_si128((__m128i*)u, BgrToU8(blue, green, red));
+		_mm_store_si128((__m128i*)v, BgrToV8(blue, green, red));
+	}
+
+	void BgrToYuv444p(const uint8_t * bgr, size_t width, size_t height, size_t bgrStride, uint8_t * y, size_t yStride,
+		uint8_t * u, size_t uStride, uint8_t * v, size_t vStride)
+	{
+		assert(width >= sizeof(__m128i));
+
+		size_t alignedWidth = width & ~(sizeof(__m128i) - 1);
+		const size_t A3 = sizeof(__m128i) * 3;
+		for (size_t row = 0; row < height; ++row)
+		{
+			for (size_t col = 0, colBgr = 0; col < alignedWidth; col += sizeof(__m128i), colBgr += A3)
+				BgrToYuv444p(bgr + colBgr, y + col, u + col, v + col);
+			y += yStride;
+			u += uStride;
+			v += vStride;
+			bgr += bgrStride;
+		}
+	}
 }
