@@ -286,6 +286,19 @@ namespace SSE{
 	const __m128i K8_SHUFFLE_BGR1_TO_RED = _mm_set_epi8(-1, -1, -1, -1, -1, 0x1, 0x4, 0x7, 0xA, 0xD, -1, -1, -1, -1, -1, -1);
 	const __m128i K8_SHUFFLE_BGR2_TO_RED = _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0x0, 0x3, 0x6, 0x9, 0xC, 0xF);
 
+	const __m128i K8_SHUFFLE_BLUE_TO_BGR0 = _mm_set_epi8(0x0, -1, -1, 0x1, -1, -1, 0x2, -1, -1, 0x3, -1, -1, 0x4, -1, -1, 0x5);
+	const __m128i K8_SHUFFLE_BLUE_TO_BGR1 = _mm_set_epi8(-1, -1, 0x6, -1, -1, 0x7, -1, -1, 0x8, -1, -1, 0x9, -1, -1, 0xA, -1);
+	const __m128i K8_SHUFFLE_BLUE_TO_BGR2 = _mm_set_epi8(-1, 0xB, -1, -1, 0xC, -1, -1, 0xD, -1, -1, 0xE, -1, -1, 0xF, -1, -1);
+
+	const __m128i K8_SHUFFLE_GREEN_TO_BGR0 = _mm_set_epi8(-1, 0x0, -1, -1, 0x1, -1, -1, 0x2, -1, -1, 0x3, -1, -1, 0x4, -1, -1);
+	const __m128i K8_SHUFFLE_GREEN_TO_BGR1 = _mm_set_epi8(0x5, -1, -1, 0x6, -1, -1, 0x7, -1, -1, 0x8, -1, -1, 0x9, -1, -1, 0xA);
+	const __m128i K8_SHUFFLE_GREEN_TO_BGR2 = _mm_set_epi8(-1, -1, 0xB, -1, -1, 0xC, -1, -1, 0xD, -1, -1, 0xE, -1, -1, 0xF, -1);
+
+	const __m128i K8_SHUFFLE_RED_TO_BGR0 = _mm_set_epi8(-1, -1, 0x0, -1, -1, 0x1, -1, -1, 0x2, -1, -1, 0x3, -1, -1, 0x4, -1);
+	const __m128i K8_SHUFFLE_RED_TO_BGR1 = _mm_set_epi8(-1, 0x5, -1, -1, 0x6, -1, -1, 0x7, -1, -1, 0x8, -1, -1, 0x9, -1, -1);
+	const __m128i K8_SHUFFLE_RED_TO_BGR2 = _mm_set_epi8(0xA, -1, -1, 0xB, -1, -1, 0xC, -1, -1, 0xD, -1, -1, 0xE, -1, -1, 0xF);
+
+
     __forceinline void LoadBgr(const __m128i * p, __m128i & blue, __m128i & green, __m128i & red)
 	{
 		__m128i bgr[3];
@@ -520,6 +533,149 @@ namespace SSE{
 		{
 			for (size_t col = 0, colBgr = 0; col < alignedWidth; col += sizeof(__m128i), colBgr += A3)
 				BgrToYuv444p(bgr + colBgr, y + col, u + col, v + col);
+			y += yStride;
+			u += uStride;
+			v += vStride;
+			bgr += bgrStride;
+		}
+	}
+
+	__forceinline void YuvToBgr(__m128i y, __m128i u, __m128i v, __m128i * bgr)
+	{
+		
+		
+		__m128i adjustedYlo = _mm_subs_epi16(_mm_unpacklo_epi8(y, _mm_set1_epi8(0x00)), _mm_set1_epi16(Y_ADJUST));//y0-y7
+		__m128i adjustedUlo = _mm_subs_epi16(_mm_unpacklo_epi8(u, _mm_set1_epi8(0x00)), _mm_set1_epi16(UV_ADJUST));//u0-u7
+		__m128i adjustedVlo = _mm_subs_epi16(_mm_unpacklo_epi8(v, _mm_set1_epi8(0x00)), _mm_set1_epi16(UV_ADJUST));//v0-v7
+		__m128i adjustedYhi = _mm_subs_epi16(_mm_unpackhi_epi8(y, _mm_set1_epi8(0x00)), _mm_set1_epi16(Y_ADJUST));//y0-y7
+		__m128i adjustedUhi = _mm_subs_epi16(_mm_unpackhi_epi8(u, _mm_set1_epi8(0x00)), _mm_set1_epi16(UV_ADJUST));//u0-u7
+		__m128i adjustedVhi = _mm_subs_epi16(_mm_unpackhi_epi8(v, _mm_set1_epi8(0x00)), _mm_set1_epi16(UV_ADJUST));//u0-u7
+		//get blue data from yuv 
+		__m128i b0_3=_mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpacklo_epi16(adjustedYlo, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT|(YUV_TO_BGR_ROUND_TERM<<16))),
+			                         _mm_madd_epi16(_mm_unpacklo_epi16(adjustedUlo, _mm_set1_epi16(0x0000)), _mm_set1_epi32(U_TO_BLUE_WEIGHT | 0 << 16))), 
+						YUV_TO_BGR_AVERAGING_SHIFT);//b0-b3
+		__m128i b4_7 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpackhi_epi16(adjustedYlo, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			                        _mm_madd_epi16(_mm_unpackhi_epi16(adjustedUlo, _mm_set1_epi16(0x0000)), _mm_set1_epi32(U_TO_BLUE_WEIGHT | 0 << 16))),
+			            YUV_TO_BGR_AVERAGING_SHIFT);//b4-b7
+		__m128i b8_11 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpacklo_epi16(adjustedYhi, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			                        _mm_madd_epi16(_mm_unpacklo_epi16(adjustedUhi, _mm_set1_epi16(0x0000)), _mm_set1_epi32(U_TO_BLUE_WEIGHT | 0 << 16))),
+			            YUV_TO_BGR_AVERAGING_SHIFT);//b8-b11
+		__m128i b12_15 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpackhi_epi16(adjustedYhi, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			                            _mm_madd_epi16(_mm_unpackhi_epi16(adjustedUhi, _mm_set1_epi16(0x0000)), _mm_set1_epi32(U_TO_BLUE_WEIGHT | 0 << 16))),
+			            YUV_TO_BGR_AVERAGING_SHIFT);//b12-b15
+
+		__m128i blue = _mm_packus_epi16(_mm_min_epi16(_mm_set1_epi16(0x00FF), _mm_max_epi16(_mm_packs_epi32(b0_3, b4_7), _mm_set1_epi16(0x0000))), 
+			                            _mm_min_epi16(_mm_set1_epi16(0x00FF), _mm_max_epi16(_mm_packs_epi32(b8_11, b12_15), _mm_set1_epi16(0x0000))));
+
+		//get green data from yuv
+		__m128i g0_3 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpacklo_epi16(adjustedYlo, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			_mm_madd_epi16(_mm_unpacklo_epi16(adjustedUlo, adjustedVlo), _mm_set1_epi32(U_TO_GREEN_WEIGHT | V_TO_GREEN_WEIGHT << 16))),
+			YUV_TO_BGR_AVERAGING_SHIFT);//g0-g3
+		__m128i g4_7 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpackhi_epi16(adjustedYlo, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			_mm_madd_epi16(_mm_unpackhi_epi16(adjustedUlo, adjustedVlo), _mm_set1_epi32(U_TO_GREEN_WEIGHT | V_TO_GREEN_WEIGHT << 16))),
+			YUV_TO_BGR_AVERAGING_SHIFT);//g4-g7
+		__m128i g8_11 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpacklo_epi16(adjustedYhi, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			_mm_madd_epi16(_mm_unpacklo_epi16(adjustedUhi, adjustedVhi), _mm_set1_epi32(U_TO_GREEN_WEIGHT | V_TO_GREEN_WEIGHT << 16))),
+			YUV_TO_BGR_AVERAGING_SHIFT);//g8-g11
+		__m128i g12_15 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpackhi_epi16(adjustedYhi, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			_mm_madd_epi16(_mm_unpackhi_epi16(adjustedUhi, adjustedVhi), _mm_set1_epi32(U_TO_GREEN_WEIGHT | V_TO_GREEN_WEIGHT << 16))),
+			YUV_TO_BGR_AVERAGING_SHIFT);//g12-g15
+
+		__m128i green = _mm_packus_epi16(_mm_min_epi16(_mm_set1_epi16(0x00FF), _mm_max_epi16(_mm_packs_epi32(g0_3, g4_7), _mm_set1_epi16(0x0000))),
+			_mm_min_epi16(_mm_set1_epi16(0x00FF), _mm_max_epi16(_mm_packs_epi32(g8_11, g12_15), _mm_set1_epi16(0x0000))));
+
+		//get red data from yuv
+		__m128i r0_3 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpacklo_epi16(adjustedYlo, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			_mm_madd_epi16(_mm_unpacklo_epi16(adjustedVlo, _mm_set1_epi16(0x0000)), _mm_set1_epi32(V_TO_RED_WEIGHT | 0 << 16))),
+			YUV_TO_BGR_AVERAGING_SHIFT);//b0-b3
+		__m128i r4_7 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpackhi_epi16(adjustedYlo, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			_mm_madd_epi16(_mm_unpackhi_epi16(adjustedVlo, _mm_set1_epi16(0x0000)), _mm_set1_epi32(V_TO_RED_WEIGHT | 0 << 16))),
+			YUV_TO_BGR_AVERAGING_SHIFT);//b4-b7
+		__m128i r8_11 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpacklo_epi16(adjustedYhi, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			_mm_madd_epi16(_mm_unpacklo_epi16(adjustedVhi, _mm_set1_epi16(0x0000)), _mm_set1_epi32(V_TO_RED_WEIGHT | 0 << 16))),
+			YUV_TO_BGR_AVERAGING_SHIFT);//b8-b11
+		__m128i r12_15 = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(_mm_unpackhi_epi16(adjustedYhi, _mm_set1_epi16(0x0001)), _mm_set1_epi32(Y_TO_RGB_WEIGHT | (YUV_TO_BGR_ROUND_TERM << 16))),
+			_mm_madd_epi16(_mm_unpackhi_epi16(adjustedVhi, _mm_set1_epi16(0x0000)), _mm_set1_epi32(V_TO_RED_WEIGHT | 0 << 16))),
+			YUV_TO_BGR_AVERAGING_SHIFT);//b12-b15
+
+		__m128i red = _mm_packus_epi16(_mm_min_epi16(_mm_set1_epi16(0x00FF), _mm_max_epi16(_mm_packs_epi32(r0_3, r4_7), _mm_set1_epi16(0x0000))),
+			_mm_min_epi16(_mm_set1_epi16(0x00FF), _mm_max_epi16(_mm_packs_epi32(r8_11, r12_15), _mm_set1_epi16(0x0000))));
+
+		_mm_store_si128(bgr + 0, _mm_or_si128(_mm_shuffle_epi8(blue, K8_SHUFFLE_BLUE_TO_BGR0),
+			                                  _mm_or_si128(_mm_shuffle_epi8(green, K8_SHUFFLE_GREEN_TO_BGR0),
+			                                               _mm_shuffle_epi8(red, K8_SHUFFLE_RED_TO_BGR0))));
+		_mm_store_si128(bgr + 1, _mm_or_si128(_mm_shuffle_epi8(blue, K8_SHUFFLE_BLUE_TO_BGR1),
+			                                  _mm_or_si128(_mm_shuffle_epi8(green, K8_SHUFFLE_GREEN_TO_BGR1),
+			                                               _mm_shuffle_epi8(red, K8_SHUFFLE_RED_TO_BGR1))));
+		_mm_store_si128(bgr + 2, _mm_or_si128(_mm_shuffle_epi8(blue, K8_SHUFFLE_BLUE_TO_BGR2),
+			                                  _mm_or_si128(_mm_shuffle_epi8(green, K8_SHUFFLE_GREEN_TO_BGR2),
+			                                               _mm_shuffle_epi8(red, K8_SHUFFLE_RED_TO_BGR2))));
+	}
+
+
+	void Yuv420pToBgr(const uint8_t * y, size_t yStride, const uint8_t * u, size_t uStride, const uint8_t * v, size_t vStride,
+		size_t width, size_t height, uint8_t * bgr, size_t bgrStride)
+	{
+		assert((width % 2 == 0) && (height % 2 == 0) && (width >= 2 * sizeof(__m128i)) && (height >= 2));
+
+		size_t bodyWidth = width& ~(2*sizeof(__m128i) - 1);
+		size_t tail = width - bodyWidth;
+		size_t A6 = sizeof(__m128i) * 6;
+		for (size_t row = 0; row < height; row += 2)
+		{
+			for (size_t colUV = 0, colY = 0, colBgr = 0; colY < bodyWidth; colY += sizeof(__m128i) * 2, colUV += sizeof(__m128i), colBgr += A6)
+			{
+				__m128i u_ = _mm_load_si128((__m128i*)(u + colUV));
+				__m128i v_ = _mm_load_si128((__m128i*)(v + colUV));
+				YuvToBgr(_mm_load_si128((__m128i*)(y + colY + 0)), _mm_unpacklo_epi8(u_, u_), _mm_unpacklo_epi8(v_, v_), (__m128i*)(bgr + colBgr + 0));
+				YuvToBgr(_mm_load_si128((__m128i*)(y + colY + 1)), _mm_unpackhi_epi8(u_, u_), _mm_unpackhi_epi8(v_, v_), (__m128i*)(bgr + colBgr + 3));
+				YuvToBgr(_mm_load_si128((__m128i*)(y + colY + yStride + 0)), _mm_unpacklo_epi8(u_, u_), _mm_unpacklo_epi8(v_, v_), (__m128i*)(bgr + colBgr + bgrStride + 0));
+				YuvToBgr(_mm_load_si128((__m128i*)(y + colY + yStride + 1)), _mm_unpackhi_epi8(u_, u_), _mm_unpackhi_epi8(v_, v_), (__m128i*)(bgr + colBgr + bgrStride + 3));
+			}
+			y += 2 * yStride;
+			u += uStride;
+			v += vStride;
+			bgr += 2 * bgrStride;
+		}
+	}
+
+	void Yuv422pToBgr(const uint8_t * y, size_t yStride, const uint8_t * u, size_t uStride, const uint8_t * v, size_t vStride,
+		size_t width, size_t height, uint8_t * bgr, size_t bgrStride)
+	{
+		assert((width % 2 == 0) && (width >= 2 * sizeof(__m128i)));
+
+		size_t bodyWidth = width&~(2 * sizeof(__m128i) -1);
+		size_t tail = width - bodyWidth;
+		size_t A6 = sizeof(__m128i) * 6;
+		for (size_t row = 0; row < height; ++row)
+		{
+			for (size_t colUV = 0, colY = 0, colBgr = 0; colY < bodyWidth; colY += 2 * sizeof(__m128i), colUV += sizeof(__m128i), colBgr += A6)
+			{
+				__m128i u_ = _mm_load_si128((__m128i*)(u + colUV));
+				__m128i v_ = _mm_load_si128((__m128i*)(v + colUV));
+				YuvToBgr(_mm_load_si128((__m128i*)(y + colY + 0)), _mm_unpacklo_epi8(u_, u_), _mm_unpacklo_epi8(v_, v_), (__m128i*)(bgr + colBgr + 0));
+				YuvToBgr(_mm_load_si128((__m128i*)(y + colY + 1)), _mm_unpackhi_epi8(u_, u_), _mm_unpackhi_epi8(v_, v_), (__m128i*)(bgr + colBgr + 3));
+			}
+			y += yStride;
+			u += uStride;
+			v += vStride;
+			bgr += bgrStride;
+		}
+	}
+
+	void Yuv444pToBgr(const uint8_t * y, size_t yStride, const uint8_t * u, size_t uStride, const uint8_t * v, size_t vStride,
+		size_t width, size_t height, uint8_t * bgr, size_t bgrStride)
+	{
+		assert(width >= sizeof(__m128i));
+		size_t bodyWidth = width&~(sizeof(__m128i)-1);
+		size_t tail = width - bodyWidth;
+		size_t A3 = sizeof(__m128i) * 3;
+		for (size_t row = 0; row < height; ++row)
+		{
+			for (size_t colYuv = 0, colBgr = 0; colYuv < bodyWidth; colYuv += sizeof(__m128i), colBgr += A3)
+			{
+				YuvToBgr(_mm_load_si128((__m128i*)(y + colYuv)), _mm_load_si128((__m128i*)(u + colYuv)), _mm_load_si128((__m128i*)(v + colYuv)), (__m128i*)(bgr + colBgr));
+			}
 			y += yStride;
 			u += uStride;
 			v += vStride;
